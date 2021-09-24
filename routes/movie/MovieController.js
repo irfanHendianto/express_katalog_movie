@@ -184,11 +184,51 @@ const deleteDataMovie = async (req,res,next) =>{
         }
     });
 }
+
+
+const getDetailMovie = async (req,res,next) =>{
+    const currentPage = +req.query.page || 1;
+    const perPage = +req.query.perPage || 5;
+    const idToSearch = mongoose.Types.ObjectId(req.params.id)
+    Movie.aggregate([
+        { $match : {_id: idToSearch}},
+        {
+          $lookup: {
+            from: "category_movies",
+            localField: "category",
+            foreignField: "_id",
+            as: "category",
+          },
+        },
+
+        {$lookup:{
+            from: "comments",
+            let: {"commnet":"$commnet"},
+            pipeline:[
+              {$match:{$expr:{$in:["$_id","$$commnet"]}}},
+              {$skip:(currentPage-1) * perPage},
+              {$limit:perPage}
+            ],
+            as: "commnet"
+         }},
+      ])
+        .then((result) => {
+            res.json({
+                data: result
+            })
+        })
+        .catch((error) => {
+            res.send(error)
+        });
+}
+
+
 module.exports = {
     addMovie,
     getAllMovie,
     giveRating,
     search,
     updateDataMovie,
-    deleteDataMovie
+    deleteDataMovie,
+    getDetailMovie
 }
