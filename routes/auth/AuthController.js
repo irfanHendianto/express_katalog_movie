@@ -4,8 +4,9 @@ const mongoose = require('mongoose');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('../../utils/nodemailer.js');
+const redis_client = require('../../utils/redis_connection');
 const {validationInputRegister} = require('../../utils/validation');
-
+const {generateJWTToken,GenerateRefreshToken} = require('../../utils/HelperJWTToken');
 
 
 const register = async (req,res,next) =>{
@@ -135,24 +136,59 @@ const login = async (req,res,next) =>{
     const validPass =  await bcryptjs.compare(req.body.password,check_user.password)
     if(!validPass) res.status(400).send("Invalid Password !");
     
-    const {nama} = await Profile.findOne({account_Id : check_user._id},{nama : 1, _id:0})
+    const {name} = await Profile.findOne({account_Id : check_user._id},{name : 1, _id:0});
 
-    const token = jwt.sign({
+    const data = {
         _id : check_user._id,
         admin : check_user.admin,
-        nama : nama,
+        name : name,
         status_account : check_user.status_account
-    },
-    process.env.TOKEN_SECRET
-    )
-    res.header('auth-token',token).send(token)
+    }
+    const token = generateJWTToken(data);
+    const refreshToken = GenerateRefreshToken(data)
+
+    res.header('auth-token').send({
+        accesstoken: token,
+        refreshToken: refreshToken
+    })
    
+}
+
+const refreshToken = async (req,res,next) =>{
+    const data = {
+        _id : req.user._id,
+        admin : req.user.admin,
+        name : req.user.name,
+        status_account : req.user.status_account
+    }
+    const access_token = generateJWTToken(data);
+    const refresh_token = GenerateRefreshToken(data);
+    res.header('auth-token').send({
+        accesstoken: access_token,
+        refresh_token: refresh_token
+    })
+
+}
+
+const logout = async (req, res, next) =>{
+    const user_id = req.user._id;
+    const token = req.token;
+
+    // remove the refresh token
+    await redis_client.del(user_id.toString());
+
+    // blacklist current access token
+    await redis_client.set('BL_' + user_id.toString(), token);
+    
+    return res.status(200).send({status: 200, message: "success."});
 }
 
 module.exports = {
     register,
     activeAccount,
     login,
-    sendEmailActiveAccount
+    sendEmailActiveAccount,
+    refreshToken,
+    logout
 
 }

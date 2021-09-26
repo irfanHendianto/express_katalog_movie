@@ -15,7 +15,9 @@ const {
     CLOUNDINARY_API_KEY,
     CLOUNDINARY_API_SEARCH,
     EMAIL,
-    PASS
+    PASS,
+    REDIS_HOST,
+    REDIS_PORT
 
 
 } = process.env
@@ -35,5 +37,7 @@ module.exports = {
     api_key: CLOUNDINARY_API_KEY,
     api_secret : CLOUNDINARY_API_SEARCH,
     email : EMAIL,
-    pass : PASS
+    pass : PASS,
+    redis_host: REDIS_HOST,
+    redis_port: REDIS_PORT
 }
